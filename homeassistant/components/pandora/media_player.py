@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import signal
+import subprocess
 
 import pexpect
 
@@ -54,6 +55,23 @@ def setup_platform(
     if not _pianobar_exists():
         return
     pandora = PandoraMediaPlayer("Pandora")
+
+    # New: create pianobar config directory if it doesn't exist
+    try: 
+        os.makedirs("~/.config/pianobar", exist_ok = True)
+        _LOGGER.warning("Directory created successfully. Installing any missing packages")
+        subprocess.run(['apk', 'add', '--no-cache', 'pianobar', 'alsa-plugins-pulse', 'pulseaudio'])
+    except OSError as error: 
+        _LOGGER.warning("Directory ~/.config/pianobar can not be created.") 
+
+    # New: create pianobar config if it doesn't exist
+    try: 
+        f = open("~/.config/pianobar/config", "w+")
+        f.write("user = YOUR@EMAIL.com\npassword = PASSWORD")
+        _LOGGER.warning("Config file created successfully")
+        f.close()
+    except OSError as error: 
+        _LOGGER.warning("Could not write to ~/.config/pianobar") 
 
     # Make sure we end the pandora subprocess on exit in case user doesn't
     # power it down.
@@ -106,9 +124,7 @@ class PandoraMediaPlayer(MediaPlayerEntity):
             self._pianobar.sendcontrol("m")
         elif mode == 2:
             _LOGGER.warning(
-                "The pianobar client is not configured to log in. "
-                "Please create a configuration file for it as described at "
-                "https://www.home-assistant.io/integrations/pandora/"
+                "Pianobar asked for login. Config file needed? Quitting"
             )
             # pass through the email/password prompts to quit cleanly
             self._pianobar.sendcontrol("m")
